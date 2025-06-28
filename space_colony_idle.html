@@ -1,0 +1,1465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drifting Colony</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: #0a0a0a;
+            color: #00ff41;
+            line-height: 1.6;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 20px;
+        }
+
+        .main-panel {
+            background: #111;
+            border: 1px solid #333;
+            padding: 20px;
+            border-radius: 4px;
+        }
+
+        .status-panel {
+            background: #111;
+            border: 1px solid #333;
+            padding: 20px;
+            border-radius: 4px;
+            height: fit-content;
+        }
+
+        h1, h2 {
+            color: #00ccff;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 2em;
+            margin-bottom: 20px;
+        }
+
+        .story-text {
+            background: #0a0a0a;
+            padding: 15px;
+            margin: 15px 0;
+            border-left: 3px solid #00ff41;
+            font-style: italic;
+            color: #aaa;
+        }
+
+        .resource {
+            display: flex;
+            justify-content: space-between;
+            margin: 8px 0;
+            padding: 5px;
+            background: #0a0a0a;
+            border-radius: 3px;
+        }
+
+        .resource-name {
+            color: #00ccff;
+        }
+
+        .resource-value {
+            color: #00ff41;
+            font-weight: bold;
+        }
+
+        .actions {
+            margin: 20px 0;
+        }
+
+        .action-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #333;
+            border-radius: 4px;
+        }
+
+        .action-section h3 {
+            color: #ff6600;
+            margin-bottom: 10px;
+        }
+
+        button {
+            background: #1a1a1a;
+            color: #00ff41;
+            border: 1px solid #333;
+            padding: 8px 15px;
+            margin: 5px;
+            cursor: pointer;
+            font-family: inherit;
+            border-radius: 3px;
+            transition: all 0.2s;
+        }
+
+        button:hover {
+            background: #2a2a2a;
+            border-color: #555;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #0a0a0a;
+            border: 1px solid #333;
+            margin: 10px 0;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00ff41, #00ccff);
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #000;
+            font-weight: bold;
+            font-size: 12px;
+        }
+
+        .colonists {
+            margin-top: 20px;
+        }
+
+        .colonist {
+            background: #0a0a0a;
+            padding: 10px;
+            margin: 5px 0;
+            border-left: 3px solid #ff6600;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .log {
+            max-height: 200px;
+            overflow-y: auto;
+            background: #0a0a0a;
+            padding: 10px;
+            border: 1px solid #333;
+            margin-top: 15px;
+        }
+
+        .log-entry {
+            margin: 5px 0;
+            color: #888;
+            font-size: 14px;
+        }
+
+        .ascii-art {
+            text-align: center;
+            margin: 20px 0;
+            color: #666;
+            font-size: 12px;
+            line-height: 1.2;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="main-panel">
+            <h1>DRIFTING COLONY</h1>
+            
+            <div class="ascii-art">
+                <pre>
+    ░░░░░▄▄▄▄▄▄▄▄░░░░░░░░
+    ░░░▄█████████████▄░░░
+    ░░▄███████████████▄░░
+    ░████████████████████
+    ████▀░░░░░░░░░░░▀████
+    ███░░COLONY SHIP░░███
+    ████▄░░░░░░░░░░░▄████
+    ░░████████████████░░░
+    ░░░▀███████████▀░░░░░
+    ░░░░░▀▀▀▀▀▀▀▀▀░░░░░░░
+                </pre>
+            </div>
+
+            <div id="story-section">
+                <div class="story-text" id="story-text">
+                    You slowly regain consciousness in the cold, dark cryopod. Emergency lighting flickers weakly. 
+                    The ship's systems are failing. You must act quickly to survive.
+                </div>
+            </div>
+
+            <div class="actions">
+                <!-- Survival Actions -->
+                <div class="action-section" id="survival-section">
+                    <h3>◆ SURVIVAL SYSTEMS</h3>
+                    <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin: 5px 0;">
+                        <button onclick="chargeReactor()" id="charge-btn">Charge Reactor</button>
+                    </div>
+                    <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin: 5px 0;">
+                        <button onclick="clearDebris()" id="debris-btn" class="hidden">Clear Debris (Cost: 2 Energy)</button>
+                        <div id="debris-assignments" class="hidden" style="display: flex; align-items: center; gap: 5px;">
+                            <button onclick="assignToDebris(-5)" id="debris-minus5" class="hidden" style="padding: 4px 8px;"><<5</button>
+                            <button onclick="assignToDebris(-1)" id="debris-minus1" class="hidden" style="padding: 4px 8px;"><1</button>
+                            <span id="debris-assigned" style="color: #00ccff; margin: 0 10px;">0 assigned</span>
+                            <button onclick="assignToDebris(1)" id="debris-plus1" class="hidden" style="padding: 4px 8px;">1></button>
+                            <button onclick="assignToDebris(5)" id="debris-plus5" class="hidden" style="padding: 4px 8px;">5>></button>
+                        </div>
+                    </div>
+                    <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin: 5px 0;">
+                        <button onclick="forageHydroponics()" id="forage-btn" class="hidden">Forage Hydroponics (Cost: 3 Energy)</button>
+                        <div id="forage-assignments" class="hidden" style="display: flex; align-items: center; gap: 5px;">
+                            <button onclick="assignToForage(-5)" id="forage-minus5" class="hidden" style="padding: 4px 8px;"><<5</button>
+                            <button onclick="assignToForage(-1)" id="forage-minus1" class="hidden" style="padding: 4px 8px;"><1</button>
+                            <span id="forage-assigned" style="color: #00ccff; margin: 0 10px;">0 assigned</span>
+                            <button onclick="assignToForage(1)" id="forage-plus1" class="hidden" style="padding: 4px 8px;">1></button>
+                            <button onclick="assignToForage(5)" id="forage-plus5" class="hidden" style="padding: 4px 8px;">5>></button>
+                        </div>
+                    </div>
+                    <button onclick="repairOxygen()" id="oxygen-btn" class="hidden">Repair Oxygen System (Cost: 30 Energy, 15 Metal)</button>
+                    
+                    <div id="reactor-progress" class="progress-bar hidden">
+                        <div class="progress-fill" id="reactor-fill" style="width: 0%;">Charge Reactor - 0%</div>
+                    </div>
+                    <div id="debris-progress" class="progress-bar hidden">
+                        <div class="progress-fill" id="debris-fill" style="width: 0%;">Clear Debris - 0%</div>
+                    </div>
+                    <div id="forage-progress" class="progress-bar hidden">
+                        <div class="progress-fill" id="forage-fill" style="width: 0%;">Forage Hydroponics - 0%</div>
+                    </div>
+                    <div id="oxygen-progress" class="progress-bar hidden">
+                        <div class="progress-fill" id="oxygen-fill" style="width: 0%;">Repair Oxygen - 0%</div>
+                    </div>
+                </div>
+
+                <!-- Colonist Management -->
+                <div class="action-section hidden" id="colonist-section">
+                    <h3>◆ COLONIST MANAGEMENT</h3>
+                    <button onclick="awakenColonist()" id="awaken-btn">Awaken Colonist (Cost: 50 Energy)</button>
+                    <div class="colonists" id="colonists-list"></div>
+                </div>
+
+                <!-- Ship Systems -->
+                <div class="action-section hidden" id="systems-section">
+                    <h3>◆ SHIP SYSTEMS</h3>
+                    <button onclick="buildCrewQuarters()" id="quarters-btn">Build Crew Quarters (Cost: 15 Metal, 20 Energy)</button>
+                    <button onclick="scanSector()" id="scan-btn">Scan Sector (Cost: 25 Energy)</button>
+                    <button onclick="repairHull()" id="hull-btn">Repair Hull Section (Cost: 30 Metal)</button>
+                    <button onclick="upgradeReactor()" id="upgrade-reactor-btn">Upgrade Reactor (Cost: 100 Metal)</button>
+                </div>
+
+                <!-- Exploration -->
+                <div class="action-section hidden" id="exploration-section">
+                    <h3>◆ EXPLORATION</h3>
+                    <button onclick="launchProbe()" id="probe-btn">Launch Survey Probe (Cost: 50 Energy, 25 Metal)</button>
+                    <button onclick="contactTraders()" id="trade-btn" class="hidden">Contact Traders</button>
+                </div>
+            </div>
+
+            <div class="log" id="game-log">
+                <div class="log-entry">System startup initiated...</div>
+                <div class="log-entry">Emergency power online.</div>
+                <div class="log-entry">Warning: Multiple system failures detected.</div>
+            </div>
+        </div>
+
+        <div class="status-panel">
+            <h2>◆ STATUS</h2>
+            
+            <div class="resource">
+                <span class="resource-name">Energy:</span>
+                <span class="resource-value" id="energy">10</span>
+                <span class="resource-rate" id="energy-rate" style="color: #888; font-size: 12px;"></span>
+                <button id="add-energy" class="hidden" onclick="addResource('energy', 50)" style="margin-left: 10px; padding: 2px 6px; font-size: 12px; background: #333; color: #00ff41; border: 1px solid #555;">•</button>
+            </div>
+            
+            <div class="resource">
+                <span class="resource-name">Food:</span>
+                <span class="resource-value" id="food">5</span>
+                <span class="resource-rate" id="food-rate" style="color: #888; font-size: 12px;"></span>
+                <button id="add-food" class="hidden" onclick="addResource('food', 50)" style="margin-left: 10px; padding: 2px 6px; font-size: 12px; background: #333; color: #00ff41; border: 1px solid #555;">•</button>
+            </div>
+            
+            <div class="resource hidden" id="oxygen-resource">
+                <span class="resource-name">Oxygen:</span>
+                <span class="resource-value" id="oxygen">100%</span>
+            </div>
+            
+            <div class="resource">
+                <span class="resource-name">Metal:</span>
+                <span class="resource-value" id="metal">0</span>
+                <span class="resource-rate" id="metal-rate" style="color: #888; font-size: 12px;"></span>
+                <button id="add-metal" class="hidden" onclick="addResource('metal', 50)" style="margin-left: 10px; padding: 2px 6px; font-size: 12px; background: #333; color: #00ff41; border: 1px solid #555;">•</button>
+            </div>
+
+            <div class="resource">
+                <span class="resource-name">Active Colonists:</span>
+                <span class="resource-value" id="colonist-count">0</span>
+                <span style="color: #888; font-size: 12px;" id="colonist-capacity"></span>
+            </div>
+
+            <div class="resource">
+                <span class="resource-name">Crew Quarters:</span>
+                <span class="resource-value" id="quarters-count">0</span>
+            </div>
+
+            <div class="resource">
+                <span class="resource-name">Reactor Stability:</span>
+                <span class="resource-value" id="reactor-stability">100%</span>
+            </div>
+
+            <h2>◆ SHIP STATUS</h2>
+            <div id="ship-status">
+                <div>Level <span id="reactor-level">1</span> Reactor: <span id="reactor-status" style="color: #ff6600;">CRITICAL</span></div>
+                <div>Life Support: <span id="life-status" style="color: #ff0000;">FAILING</span></div>
+                <div>Hull Integrity: <span id="hull-status" style="color: #ff6600;">72%</span></div>
+                <div class="hidden" id="nav-status-div">Navigation: <span id="nav-status" style="color: #ff0000;">OFFLINE</span></div>
+            </div>
+
+            <div id="work-assignments" class="hidden">
+                <h2>◆ WORK ASSIGNMENTS</h2>
+                <div id="debris-workers" class="hidden">Debris Clearing: <span style="color: #00ff41;">0 workers</span></div>
+                <div id="forage-workers" class="hidden">Food Production: <span style="color: #00ff41;">0 workers</span></div>
+                <div id="idle-workers">Idle Workers: <span style="color: #888;" id="idle-count">0</span></div>
+            </div>
+
+            <h2>◆ DEV TOOLS</h2>
+            <div id="dev-tools">
+                <div style="margin: 10px 0;">
+                    <label style="color: #00ccff; cursor: pointer;">
+                        <input type="checkbox" id="instant-build-toggle" style="margin-right: 8px;">
+                        Instant Build
+                    </label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Game State Object
+        const gameState = {
+            resources: {
+                energy: 10,
+                food: 5,
+                oxygen: 100,
+                metal: 0
+            },
+            colonists: {
+                awake: 0, // Don't count the player as a colonist
+                total: 0,
+                workers: []
+            },
+            ship: {
+                reactorLevel: 1,
+                systemsOnline: 12,
+                hullIntegrity: 72,
+                navigationOnline: false,
+                reactorStability: 12,
+                crewQuarters: 0 // Number of crew quarters built (each holds 8 colonists)
+            },
+            progression: {
+                reactorCharged: false,
+                debrisCleared: 0,
+                hydroponicsFound: false,
+                oxygenRepaired: false,
+                firstColonistAwakened: false,
+                scannerOnline: false,
+                tradersContacted: false
+            },
+            assignments: {
+                clearingDebris: 0,      // Number of colonists assigned to debris clearing
+                foragingHydroponics: 0  // Number of colonists assigned to hydroponics
+            },
+            devTools: {
+                instantBuild: false     // Toggle for instant progress bars
+            },
+            actions: {
+                chargingReactor: false,
+                reactorChargeProgress: 0,
+                foragingHydroponics: false,
+                forageProgress: 0,
+                clearingDebris: false,
+                debrisProgress: 0,
+                repairingOxygen: false,
+                oxygenRepairProgress: 0
+            }
+        };
+
+        // Story progression texts
+        const storyTexts = {
+            reactorCharged: "The reactor hums to life. Emergency power is now stable. You notice debris blocking the corridors - it must be cleared before you can safely explore the ship.",
+            debrisCleared: "The corridors are now clear. You can access the hydroponics bay and oxygen systems safely. The ship is opening up to you.",
+            hydroponicsFound: "You discover emergency food rations in the hydroponics bay. The plants are dead, but some supplies remain.",
+            oxygenRepaired: "The oxygen recyclers wheeze back to life. You can breathe easier now. Perhaps it's time to wake another colonist.",
+            firstColonist: "You successfully revive a fellow colonist. They're disoriented but grateful. With two people working, progress will be faster.",
+            systemsImproving: "With more colonists awake, ship systems are slowly coming back online. The navigation computer flickers with possibility.",
+            scannersOnline: "Long-range scanners are now operational. You detect several interesting signals in nearby space...",
+            tradersFound: "Your scans have attracted the attention of nomadic traders. They're willing to exchange resources."
+        };
+
+        // Initialize the game
+        function initGame() {
+            try {
+                updateDisplay();
+                startGameLoop();
+                
+                // Set up dev tools event listener
+                const instantBuildToggle = document.getElementById('instant-build-toggle');
+                if (instantBuildToggle) {
+                    instantBuildToggle.addEventListener('change', function() {
+                        try {
+                            gameState.devTools.instantBuild = this.checked;
+                            
+                            // Show/hide resource buttons based on instant build state
+                            const resourceButtons = ['add-energy', 'add-food', 'add-metal'];
+                            resourceButtons.forEach(buttonId => {
+                                const button = document.getElementById(buttonId);
+                                if (button) {
+                                    if (gameState.devTools.instantBuild) {
+                                        button.classList.remove('hidden');
+                                    } else {
+                                        button.classList.add('hidden');
+                                    }
+                                }
+                            });
+                            
+                            if (gameState.devTools.instantBuild) {
+                                log("DEV: Instant Build enabled - all progress bars will complete instantly");
+                                log("DEV: Resource buttons enabled - click • next to resources to add +50");
+                            } else {
+                                log("DEV: Instant Build disabled - normal progress times restored");
+                            }
+                        } catch (error) {
+                            console.error("Error toggling instant build:", error);
+                            log("ERROR: Failed to toggle instant build - " + error.message);
+                        }
+                    });
+                }
+                
+                log("You are the last hope for this drifting colony ship...");
+                log("Game initialized successfully");
+            } catch (error) {
+                console.error("Error initializing game:", error);
+                alert("Game initialization failed: " + error.message);
+            }
+        }
+
+        // Main game loop - runs every 5 seconds for resource generation
+        function startGameLoop() {
+            // Resource generation every 5 seconds
+            setInterval(() => {
+                resourceLoop();
+            }, 5000);
+            
+            // Progress bar updates every 1 second for smooth animation
+            setInterval(() => {
+                progressLoop();
+            }, 1000);
+        }
+
+        function resourceLoop() {
+            // Reactor degradation - slower decline based on reactor level
+            if (gameState.ship.reactorStability > 0) {
+                let degradationRate = 0.5; // Base degradation rate (level 1)
+                
+                // Slower degradation for upgraded reactors
+                if (gameState.ship.reactorLevel >= 3) {
+                    degradationRate = 0.2; // Level 3: much slower degradation
+                } else if (gameState.ship.reactorLevel >= 2) {
+                    degradationRate = 0.3; // Level 2: moderately slower degradation
+                }
+                
+                gameState.ship.reactorStability = Math.max(0, gameState.ship.reactorStability - degradationRate);
+                
+                // If reactor gets too low, disable actions
+                if (gameState.ship.reactorStability < 20) {
+                    disableActionsFromPowerLoss();
+                }
+            }
+
+            // Reactor energy generation based on status and stability
+            if (gameState.progression.reactorCharged && gameState.ship.reactorStability > 20) {
+                let energyGeneration = getReactorEnergyGeneration();
+                gameState.resources.energy += energyGeneration;
+            }
+
+            // Automated resource generation from assigned workers
+            if (gameState.ship.reactorStability > 20) {
+                // Metal generation from debris clearing workers
+                if (gameState.assignments.clearingDebris > 0) {
+                    const metalGeneration = gameState.assignments.clearingDebris * 2; // 2 metal per worker per 5 seconds
+                    gameState.resources.metal += metalGeneration;
+                }
+                
+                // Food generation from foraging workers
+                if (gameState.assignments.foragingHydroponics > 0) {
+                    const foodGeneration = gameState.assignments.foragingHydroponics * 3; // 3 food per worker per 5 seconds
+                    gameState.resources.food += foodGeneration;
+                }
+            }
+
+            // Passive resource generation from unassigned colonists (old system for energy only)
+            const unassignedWorkers = Math.max(0, gameState.colonists.awake - gameState.assignments.clearingDebris - gameState.assignments.foragingHydroponics);
+            if (unassignedWorkers > 0 && gameState.ship.reactorStability > 20) {
+                gameState.resources.energy += unassignedWorkers * 2; // Unassigned workers generate energy
+                
+                if (gameState.progression.oxygenRepaired) {
+                    gameState.resources.oxygen = Math.min(100, gameState.resources.oxygen + 1);
+                }
+            }
+
+            // Food consumption by colonists only (not the player)
+            if (gameState.colonists.awake > 0) {
+                const workers = gameState.colonists.awake;
+                const foodConsumption = workers * 1; // 1 food per worker every 5 seconds
+                gameState.resources.food -= foodConsumption;
+                
+                // Check for starvation
+                if (gameState.resources.food < 0) {
+                    gameState.resources.food = 0;
+                    handleStarvation();
+                }
+            }
+
+            // Random events
+            if (Math.random() < 0.1) {
+                triggerRandomEvent();
+            }
+
+            updateDisplay();
+        }
+
+        // New function to calculate reactor energy generation based on detailed states
+        function getReactorEnergyGeneration() {
+            let baseGeneration = 0;
+            
+            // Determine base generation from reactor level (increased by +1 for each level)
+            if (gameState.ship.reactorLevel >= 3) {
+                baseGeneration = 6; // Upgraded reactor (was 5, now 6)
+            } else if (gameState.ship.reactorLevel >= 2) {
+                baseGeneration = 4; // Basic upgraded reactor (was 3, now 4)
+            } else {
+                baseGeneration = 3; // Initial reactor (was 2, now 3)
+            }
+            
+            // Apply stability multiplier based on reactor state
+            let stabilityMultiplier = 1;
+            if (gameState.ship.reactorStability >= 80) {
+                stabilityMultiplier = 1.0; // OPTIMAL: 100% efficiency
+            } else if (gameState.ship.reactorStability >= 60) {
+                stabilityMultiplier = 0.75; // GOOD: 75% efficiency
+            } else if (gameState.ship.reactorStability >= 40) {
+                stabilityMultiplier = 0.5; // STABLE: 50% efficiency
+            } else if (gameState.ship.reactorStability >= 20) {
+                stabilityMultiplier = 0.25; // POOR: 25% efficiency
+            } else {
+                stabilityMultiplier = 0; // CRITICAL: 0% efficiency (handled elsewhere)
+            }
+            
+            return Math.floor(baseGeneration * stabilityMultiplier);
+        }
+
+        // New function to get reactor status text and color
+        function getReactorStatus() {
+            if (gameState.ship.reactorStability >= 80) {
+                return { text: 'OPTIMAL', color: '#00ff41' };
+            } else if (gameState.ship.reactorStability >= 60) {
+                return { text: 'GOOD', color: '#88ff44' };
+            } else if (gameState.ship.reactorStability >= 40) {
+                return { text: 'STABLE', color: '#ffff00' };
+            } else if (gameState.ship.reactorStability >= 20) {
+                return { text: 'POOR', color: '#ff8800' };
+            } else {
+                return { text: 'CRITICAL', color: '#ff0000' };
+            }
+        }
+
+        function progressLoop() {
+            // Progress bar updates every second for smooth animation
+            let anyProgressActive = false;
+
+            // Check if instant build is enabled
+            const instantBuild = gameState.devTools.instantBuild;
+
+            // Reactor charging progress
+            if (gameState.actions.chargingReactor) {
+                if (instantBuild) {
+                    gameState.actions.reactorChargeProgress = 100;
+                } else {
+                    gameState.actions.reactorChargeProgress += 4; // 25 seconds total (100/25 = 4% per second)
+                }
+                updateReactorProgress();
+                anyProgressActive = true;
+                
+                if (gameState.actions.reactorChargeProgress >= 100) {
+                    completeReactorCharge();
+                }
+            }
+
+            // Debris clearing progress
+            if (gameState.actions.clearingDebris) {
+                if (instantBuild) {
+                    gameState.actions.debrisProgress = 100;
+                } else {
+                    gameState.actions.debrisProgress += 20; // 5 seconds total (100/5 = 20% per second)
+                }
+                updateDebrisProgress();
+                anyProgressActive = true;
+                
+                if (gameState.actions.debrisProgress >= 100) {
+                    completeDebrisClearing();
+                }
+            }
+
+            // Hydroponics foraging progress
+            if (gameState.actions.foragingHydroponics) {
+                if (instantBuild) {
+                    gameState.actions.forageProgress = 100;
+                } else {
+                    gameState.actions.forageProgress += 10; // 10 seconds total (100/10 = 10% per second)
+                }
+                updateForageProgress();
+                anyProgressActive = true;
+                
+                if (gameState.actions.forageProgress >= 100) {
+                    completeForaging();
+                }
+            }
+
+            // Oxygen repair progress
+            if (gameState.actions.repairingOxygen) {
+                if (instantBuild) {
+                    gameState.actions.oxygenRepairProgress = 100;
+                } else {
+                    gameState.actions.oxygenRepairProgress += 3.33; // 30 seconds total (100/30 = 3.33% per second)
+                }
+                updateOxygenProgress();
+                anyProgressActive = true;
+                
+                if (gameState.actions.oxygenRepairProgress >= 100) {
+                    completeOxygenRepair();
+                }
+            }
+
+            // Only update display if there's active progress to avoid unnecessary updates
+            if (anyProgressActive) {
+                updateDisplay();
+            }
+        }
+
+        function disableActionsFromPowerLoss() {
+            const buttons = ['forage-btn', 'oxygen-btn', 'awaken-btn', 'scan-btn', 'hull-btn', 'upgrade-reactor-btn', 'probe-btn', 'trade-btn', 'debris-btn'];
+            buttons.forEach(btnId => {
+                const btn = document.getElementById(btnId);
+                if (btn && !btn.classList.contains('hidden')) {
+                    btn.disabled = true;
+                }
+            });
+            
+            if (gameState.ship.reactorStability < 20) {
+                log("CRITICAL: Reactor stability critical! Emergency lighting only. All systems offline.");
+            }
+        }
+
+        // Actions
+        function chargeReactor() {
+            if (gameState.actions.chargingReactor) {
+                log("Reactor charging already in progress.");
+                return;
+            }
+
+            // No energy cost - emergency charging is always available
+            gameState.actions.chargingReactor = true;
+            gameState.actions.reactorChargeProgress = 0;
+            
+            document.getElementById('reactor-progress').classList.remove('hidden');
+            document.getElementById('charge-btn').disabled = true;
+            
+            log("Beginning reactor charging sequence...");
+            updateDisplay();
+        }
+
+        function completeReactorCharge() {
+            gameState.actions.chargingReactor = false;
+            gameState.ship.reactorStability = Math.min(100, gameState.ship.reactorStability + 25); // Only increase by 25%
+            
+            // Only unlock debris clearing and increase reactor level on the FIRST reactor charge
+            if (!gameState.progression.reactorCharged) {
+                gameState.progression.reactorCharged = true;
+                gameState.ship.systemsOnline = 25;
+                gameState.ship.reactorLevel++;
+                document.getElementById('debris-btn').classList.remove('hidden');
+                updateStory(storyTexts.reactorCharged);
+                log("Reactor charging complete! Emergency lighting restored. You can see debris blocking the corridors.");
+            } else {
+                log(`Reactor stability increased to ${Math.floor(gameState.ship.reactorStability)}%. Systems improving.`);
+            }
+            
+            document.getElementById('reactor-progress').classList.add('hidden');
+            document.getElementById('charge-btn').disabled = false;
+            updateDisplay();
+        }
+
+        function clearDebris() {
+            if (gameState.resources.energy < 2) {
+                log("Insufficient energy to clear debris.");
+                return;
+            }
+
+            if (gameState.actions.clearingDebris) {
+                log("Already clearing debris.");
+                return;
+            }
+
+            gameState.resources.energy -= 2;
+            gameState.actions.clearingDebris = true;
+            gameState.actions.debrisProgress = 0;
+            
+            document.getElementById('debris-progress').classList.remove('hidden');
+            document.getElementById('debris-btn').disabled = true;
+            
+            log("Beginning debris removal...");
+            updateDisplay();
+        }
+
+        function completeDebrisClearing() {
+            gameState.actions.clearingDebris = false;
+            gameState.progression.debrisCleared++;
+            
+            const metalFound = Math.floor(Math.random() * 8) + 3;
+            gameState.resources.metal += metalFound;
+            
+            document.getElementById('debris-progress').classList.add('hidden');
+            document.getElementById('debris-btn').disabled = false;
+            
+            log(`Debris cleared! Found ${metalFound} units of scrap metal.`);
+            
+            if (gameState.progression.debrisCleared >= 4 && !gameState.progression.hydroponicsFound) {
+                document.getElementById('forage-btn').classList.remove('hidden');
+                document.getElementById('oxygen-btn').classList.remove('hidden');
+                updateStory(storyTexts.debrisCleared);
+                log("All corridor debris cleared. Hydroponics bay and oxygen systems are now accessible.");
+            }
+            
+            updateDisplay();
+        }
+
+        function forageHydroponics() {
+            if (gameState.resources.energy < 3) {
+                log("Insufficient energy to search hydroponics.");
+                return;
+            }
+
+            if (gameState.actions.foragingHydroponics) {
+                log("Already foraging in hydroponics.");
+                return;
+            }
+
+            gameState.resources.energy -= 3;
+            gameState.actions.foragingHydroponics = true;
+            gameState.actions.forageProgress = 0;
+            
+            document.getElementById('forage-progress').classList.remove('hidden');
+            document.getElementById('forage-btn').disabled = true;
+            
+            log("Searching hydroponics bay...");
+            updateDisplay();
+        }
+
+        function completeForaging() {
+            gameState.actions.foragingHydroponics = false;
+            
+            const foodFound = Math.floor(Math.random() * 8) + 3;
+            gameState.resources.food += foodFound;
+            
+            document.getElementById('forage-progress').classList.add('hidden');
+            document.getElementById('forage-btn').disabled = false;
+            
+            if (!gameState.progression.hydroponicsFound) {
+                gameState.progression.hydroponicsFound = true;
+                updateStory(storyTexts.hydroponicsFound);
+            }
+
+            log(`Found ${foodFound} food rations in hydroponics bay.`);
+            updateDisplay();
+        }
+
+        function repairOxygen() {
+            if (gameState.resources.energy < 30 || gameState.resources.metal < 15) {
+                log("Insufficient resources to repair oxygen system.");
+                return;
+            }
+
+            if (gameState.actions.repairingOxygen) {
+                log("Oxygen repair already in progress.");
+                return;
+            }
+
+            gameState.resources.energy -= 30;
+            gameState.resources.metal -= 15;
+            gameState.actions.repairingOxygen = true;
+            gameState.actions.oxygenRepairProgress = 0;
+            
+            document.getElementById('oxygen-progress').classList.remove('hidden');
+            document.getElementById('oxygen-btn').disabled = true;
+            
+            log("Beginning oxygen system repairs...");
+            updateDisplay();
+        }
+
+        function completeOxygenRepair() {
+            gameState.actions.repairingOxygen = false;
+            gameState.progression.oxygenRepaired = true;
+            gameState.ship.systemsOnline = 40;
+            
+            document.getElementById('oxygen-progress').classList.add('hidden');
+            document.getElementById('oxygen-btn').classList.add('hidden'); // Hide button when repair is complete
+            document.getElementById('oxygen-resource').classList.remove('hidden');
+            document.getElementById('colonist-section').classList.remove('hidden');
+            document.getElementById('systems-section').classList.remove('hidden'); // Make sure systems section is visible
+            
+            updateStory(storyTexts.oxygenRepaired);
+            log("Oxygen recycling system repaired!");
+            updateDisplay();
+        }
+
+        function awakenColonist() {
+            const maxColonists = (gameState.ship.crewQuarters * 8); // No +1 since player isn't counted
+            
+            if (gameState.colonists.awake >= maxColonists && maxColonists > 0) {
+                log("No available crew quarters for additional colonists. Build more crew quarters first.");
+                return;
+            }
+            
+            if (maxColonists === 0) {
+                log("No crew quarters available. Build crew quarters first.");
+                return;
+            }
+
+            if (gameState.resources.energy < 50) {
+                log("Insufficient energy to awaken colonist safely.");
+                return;
+            }
+
+            gameState.resources.energy -= 50;
+            gameState.colonists.awake++;
+            gameState.colonists.total++;
+
+            const colonistTypes = ['Engineer', 'Medic', 'Botanist', 'Navigator', 'Security'];
+            const type = colonistTypes[Math.floor(Math.random() * colonistTypes.length)];
+            
+            gameState.colonists.workers.push({
+                type: type,
+                productivity: Math.random() * 0.5 + 0.8
+            });
+
+            if (!gameState.progression.firstColonistAwakened) {
+                gameState.progression.firstColonistAwakened = true;
+                updateStory(storyTexts.firstColonist);
+                document.getElementById('systems-section').classList.remove('hidden');
+                
+                // Show assignment controls when first colonist is awakened
+                document.getElementById('debris-assignments').classList.remove('hidden');
+                document.getElementById('forage-assignments').classList.remove('hidden');
+                document.getElementById('debris-workers').classList.remove('hidden');
+                document.getElementById('forage-workers').classList.remove('hidden');
+                document.getElementById('work-assignments').classList.remove('hidden');
+            } else {
+                // Show systems section for subsequent colonists too
+                document.getElementById('systems-section').classList.remove('hidden');
+            }
+
+            if (gameState.colonists.awake >= 2) {
+                updateStory(storyTexts.systemsImproving);
+                document.getElementById('nav-status-div').classList.remove('hidden');
+            }
+
+            log(`Awakened a ${type}. Use assignment controls to put workers to tasks.`);
+            updateColonistsList();
+            updateDisplay();
+        }
+
+        // New assignment functions
+        function assignToDebris(amount) {
+            const availableWorkers = getAvailableWorkers();
+            const currentAssigned = gameState.assignments.clearingDebris;
+            
+            if (amount > 0) {
+                // Assigning workers
+                const toAssign = Math.min(amount, availableWorkers);
+                gameState.assignments.clearingDebris += toAssign;
+            } else {
+                // Unassigning workers
+                const toUnassign = Math.min(Math.abs(amount), currentAssigned);
+                gameState.assignments.clearingDebris -= toUnassign;
+            }
+            
+            updateDisplay();
+            log(`${gameState.assignments.clearingDebris} workers now assigned to debris clearing.`);
+        }
+
+        function assignToForage(amount) {
+            const availableWorkers = getAvailableWorkers();
+            const currentAssigned = gameState.assignments.foragingHydroponics;
+            
+            if (amount > 0) {
+                // Assigning workers
+                const toAssign = Math.min(amount, availableWorkers);
+                gameState.assignments.foragingHydroponics += toAssign;
+            } else {
+                // Unassigning workers
+                const toUnassign = Math.min(Math.abs(amount), currentAssigned);
+                gameState.assignments.foragingHydroponics -= toUnassign;
+            }
+            
+            updateDisplay();
+            log(`${gameState.assignments.foragingHydroponics} workers now assigned to food production.`);
+        }
+
+        function getAvailableWorkers() {
+            const totalWorkers = Math.max(0, gameState.colonists.awake - 1); // Exclude player
+            const assignedWorkers = gameState.assignments.clearingDebris + gameState.assignments.foragingHydroponics;
+            return totalWorkers - assignedWorkers;
+        }
+
+        function buildCrewQuarters() {
+            if (gameState.resources.metal < 40 || gameState.resources.energy < 20) {
+                log("Insufficient resources to build crew quarters.");
+                return;
+            }
+
+            gameState.resources.metal -= 40;
+            gameState.resources.energy -= 20;
+            gameState.ship.crewQuarters++;
+            
+            log(`Crew quarters constructed! Can now house ${gameState.ship.crewQuarters * 8 + 1} total colonists.`);
+            updateDisplay();
+        }
+
+        function handleStarvation() {
+            if (gameState.colonists.awake > 1) {
+                // Kill the most recently awakened colonist (not the player)
+                gameState.colonists.awake--;
+                gameState.colonists.workers.pop();
+                
+                log("CRITICAL: A colonist has died from starvation! Food supplies must be maintained.");
+                updateColonistsList();
+            } else {
+                // All colonists are dead, but player survives
+                log("WARNING: All colonists have died from starvation. You must awaken new colonists and secure food supplies.");
+            }
+        }
+
+        function scanSector() {
+            if (gameState.resources.energy < 25) {
+                log("Insufficient energy for sector scan.");
+                return;
+            }
+
+            gameState.resources.energy -= 25;
+            
+            const discoveries = [
+                "Detected debris field with salvageable materials",
+                "Found derelict station broadcasting automated distress signal", 
+                "Discovered asteroid rich in rare metals",
+                "Identified potential habitable planet in nearby system",
+                "Located active trade beacon from nomadic merchants"
+            ];
+
+            const discovery = discoveries[Math.floor(Math.random() * discoveries.length)];
+            log(`Scan complete: ${discovery}`);
+
+            if (Math.random() < 0.6) {
+                const metalFound = Math.floor(Math.random() * 15) + 5;
+                gameState.resources.metal += metalFound;
+                log(`Salvaged ${metalFound} units of metal from scan data.`);
+            }
+
+            if (!gameState.progression.scannersOnline && gameState.colonists.awake >= 3) {
+                gameState.progression.scannersOnline = true;
+                updateStory(storyTexts.scannersOnline);
+                document.getElementById('exploration-section').classList.remove('hidden');
+            }
+
+            updateDisplay();
+        }
+
+        function repairHull() {
+            if (gameState.resources.metal < 30) {
+                log("Insufficient metal for hull repairs.");
+                return;
+            }
+
+            gameState.resources.metal -= 30;
+            gameState.ship.hullIntegrity = Math.min(100, gameState.ship.hullIntegrity + 15);
+            gameState.ship.systemsOnline = Math.min(100, gameState.ship.systemsOnline + 5);
+            
+            log("Hull section repaired. Ship integrity improving.");
+            updateDisplay();
+        }
+
+        function upgradeReactor() {
+            const maxReactorLevel = 3; // Cap at level 3 for now
+            
+            if (gameState.ship.reactorLevel >= maxReactorLevel) {
+                log("Reactor is already at maximum level!");
+                return;
+            }
+            
+            if (gameState.resources.metal < 100) {
+                log("Insufficient metal for reactor upgrade.");
+                return;
+            }
+
+            gameState.resources.metal -= 100;
+            gameState.ship.reactorLevel++;
+            gameState.ship.systemsOnline = Math.min(100, gameState.ship.systemsOnline + 10);
+            
+            log(`Reactor upgraded to level ${gameState.ship.reactorLevel}! Power generation increased and degradation slowed.`);
+            
+            // Hide upgrade button if at max level
+            if (gameState.ship.reactorLevel >= maxReactorLevel) {
+                document.getElementById('upgrade-reactor-btn').classList.add('hidden');
+                log("Reactor has reached maximum upgrade level.");
+            }
+            
+            updateDisplay();
+        }
+
+        function launchProbe() {
+            if (gameState.resources.energy < 50 || gameState.resources.metal < 25) {
+                log("Insufficient resources to launch probe.");
+                return;
+            }
+
+            gameState.resources.energy -= 50;
+            gameState.resources.metal -= 25;
+
+            const probeResults = [
+                "Probe discovers rich mineral deposits on nearby asteroid",
+                "Survey data reveals potential colony sites ahead",
+                "Probe detects signs of other survivor ships in the sector",
+                "Long-range sensors identify a space station willing to trade",
+                "Probe maps safe passage through dangerous nebula"
+            ];
+
+            const result = probeResults[Math.floor(Math.random() * probeResults.length)];
+            log(`Probe deployed: ${result}`);
+
+            if (Math.random() < 0.4 && !gameState.progression.tradersContacted) {
+                gameState.progression.tradersContacted = true;
+                document.getElementById('trade-btn').classList.remove('hidden');
+                updateStory(storyTexts.tradersFound);
+            }
+
+            updateDisplay();
+        }
+
+        function contactTraders() {
+            if (gameState.resources.energy < 20) {
+                log("Insufficient energy to establish trade communications.");
+                return;
+            }
+
+            gameState.resources.energy -= 20;
+
+            const trades = [
+                { give: 'food', giveAmount: 30, get: 'metal', getAmount: 20 },
+                { give: 'energy', giveAmount: 40, get: 'food', getAmount: 25 },
+                { give: 'metal', giveAmount: 15, get: 'energy', getAmount: 35 }
+            ];
+
+            const trade = trades[Math.floor(Math.random() * trades.length)];
+            
+            if (gameState.resources[trade.give] >= trade.giveAmount) {
+                gameState.resources[trade.give] -= trade.giveAmount;
+                gameState.resources[trade.get] += trade.getAmount;
+                log(`Trade successful: Exchanged ${trade.giveAmount} ${trade.give} for ${trade.getAmount} ${trade.get}`);
+            } else {
+                log(`Trade failed: Insufficient ${trade.give} (need ${trade.giveAmount})`);
+            }
+
+            updateDisplay();
+        }
+
+        // Progress bar update functions
+        function updateReactorProgress() {
+            const fill = document.getElementById('reactor-fill');
+            const progress = Math.floor(gameState.actions.reactorChargeProgress);
+            fill.style.width = progress + '%';
+            fill.textContent = `Charge Reactor - ${progress}%`;
+        }
+
+        function updateDebrisProgress() {
+            const fill = document.getElementById('debris-fill');
+            const progress = Math.floor(gameState.actions.debrisProgress);
+            fill.style.width = progress + '%';
+            fill.textContent = `Clear Debris - ${progress}%`;
+        }
+
+        function updateForageProgress() {
+            const fill = document.getElementById('forage-fill');
+            const progress = Math.floor(gameState.actions.forageProgress);
+            fill.style.width = progress + '%';
+            fill.textContent = `Forage Hydroponics - ${progress}%`;
+        }
+
+        function updateOxygenProgress() {
+            const fill = document.getElementById('oxygen-fill');
+            const progress = Math.floor(gameState.actions.oxygenRepairProgress);
+            fill.style.width = progress + '%';
+            fill.textContent = `Repair Oxygen - ${progress}%`;
+        }
+
+        // Dev Tools Functions
+        function addResource(resourceType, amount) {
+            try {
+                if (!gameState.devTools.instantBuild) {
+                    log("DEV: Resource buttons only work when Instant Build is enabled");
+                    return;
+                }
+                
+                gameState.resources[resourceType] += amount;
+                log(`DEV: Added ${amount} ${resourceType}`);
+                updateDisplay();
+            } catch (error) {
+                console.error("Error adding resource:", error);
+                log("ERROR: Failed to add resource - " + error.message);
+            }
+        }
+
+        // Helper functions
+        function updateStory(text) {
+            document.getElementById('story-text').textContent = text;
+        }
+
+        function updateColonistsList() {
+            const list = document.getElementById('colonists-list');
+            list.innerHTML = '';
+            
+            // Show all workers (should match the colonists.awake count)
+            gameState.colonists.workers.forEach((worker, index) => {
+                const div = document.createElement('div');
+                div.className = 'colonist';
+                div.innerHTML = `${worker.type} - Productivity: ${(worker.productivity * 100).toFixed(0)}%`;
+                list.appendChild(div);
+            });
+            
+            // Debug: Check if counts match
+            if (gameState.colonists.workers.length !== gameState.colonists.awake) {
+                log(`DEBUG: Mismatch - Workers list: ${gameState.colonists.workers.length}, Awake count: ${gameState.colonists.awake}`);
+            }
+        }
+
+        function triggerRandomEvent() {
+            const events = [
+                () => {
+                    if (gameState.resources.energy > 10 && gameState.ship.reactorStability > 30) {
+                        gameState.resources.energy -= 5;
+                        gameState.ship.reactorStability -= 3;
+                        log("Power fluctuation detected. Reactor stability decreased.");
+                    }
+                },
+                () => {
+                    if (gameState.progression.oxygenRepaired && Math.random() < 0.3) {
+                        gameState.resources.oxygen = Math.max(80, gameState.resources.oxygen - 5);
+                        log("Minor oxygen leak detected and sealed.");
+                    }
+                },
+                () => {
+                    if (gameState.colonists.awake > 2 && Math.random() < 0.2) {
+                        const bonus = Math.floor(Math.random() * 10) + 5;
+                        gameState.resources.metal += bonus;
+                        log(`Colonists found ${bonus} metal scraps during routine maintenance.`);
+                    }
+                }
+            ];
+
+            const event = events[Math.floor(Math.random() * events.length)];
+            event();
+        }
+
+        function log(message) {
+            const logDiv = document.getElementById('game-log');
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logDiv.appendChild(entry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+            
+            // Keep only last 20 entries
+            while (logDiv.children.length > 20) {
+                logDiv.removeChild(logDiv.firstChild);
+            }
+        }
+
+        function updateDisplay() {
+            // Update resources
+            document.getElementById('energy').textContent = Math.floor(gameState.resources.energy);
+            document.getElementById('food').textContent = Math.floor(gameState.resources.food);
+            document.getElementById('oxygen').textContent = Math.floor(gameState.resources.oxygen) + '%';
+            document.getElementById('metal').textContent = Math.floor(gameState.resources.metal);
+            document.getElementById('colonist-count').textContent = gameState.colonists.awake;
+            document.getElementById('quarters-count').textContent = gameState.ship.crewQuarters;
+            document.getElementById('reactor-stability').textContent = Math.floor(gameState.ship.reactorStability) + '%';
+            document.getElementById('reactor-level').textContent = gameState.ship.reactorLevel;
+
+            // Update colonist capacity display with X/Total format
+            const maxColonists = gameState.ship.crewQuarters * 8;
+            const capacityEl = document.getElementById('colonist-capacity');
+            if (gameState.ship.crewQuarters > 0) {
+                capacityEl.textContent = ` (${gameState.colonists.awake}/${maxColonists})`;
+            } else {
+                capacityEl.textContent = ' (need quarters)';
+            }
+
+            // Update resource generation rates
+            updateResourceRates();
+            
+            // Update work assignments
+            updateWorkAssignments();
+
+            // Update ship status
+            const reactorStatusInfo = getReactorStatus();
+            const reactorStatusEl = document.getElementById('reactor-status');
+            
+            if (!gameState.progression.reactorCharged) {
+                reactorStatusEl.textContent = 'CRITICAL';
+                reactorStatusEl.style.color = '#ff0000';
+            } else {
+                reactorStatusEl.textContent = reactorStatusInfo.text;
+                reactorStatusEl.style.color = reactorStatusInfo.color;
+            }
+
+            const lifeStatus = document.getElementById('life-status');
+            if (gameState.progression.oxygenRepaired) {
+                lifeStatus.textContent = 'NOMINAL';
+                lifeStatus.style.color = '#00ff41';
+            }
+
+            const hullStatus = document.getElementById('hull-status');
+            hullStatus.textContent = gameState.ship.hullIntegrity + '%';
+            if (gameState.ship.hullIntegrity >= 90) {
+                hullStatus.style.color = '#00ff41';
+            } else if (gameState.ship.hullIntegrity >= 75) {
+                hullStatus.style.color = '#ffff00';
+            }
+
+            // Update button states
+            updateButtonStates();
+        }
+
+        function updateResourceRates() {
+            // Calculate energy generation rate from reactor
+            let energyRate = 0;
+            if (gameState.progression.reactorCharged && gameState.ship.reactorStability > 20) {
+                energyRate = getReactorEnergyGeneration();
+            }
+            
+            // Add energy from unassigned workers
+            const unassignedWorkers = getAvailableWorkers();
+            if (unassignedWorkers > 0 && gameState.ship.reactorStability > 20) {
+                energyRate += unassignedWorkers * 2;
+            }
+
+            // Calculate food generation and consumption
+            let foodGeneration = 0;
+            if (gameState.assignments.foragingHydroponics > 0 && gameState.ship.reactorStability > 20) {
+                foodGeneration = gameState.assignments.foragingHydroponics * 3;
+            }
+            
+            // Calculate food consumption (all colonists eat)
+            let foodConsumption = 0;
+            if (gameState.colonists.awake > 0) {
+                foodConsumption = gameState.colonists.awake * 1; // 1 food per colonist per 5 seconds
+            }
+            
+            // Net food rate (generation - consumption)
+            const netFoodRate = foodGeneration - foodConsumption;
+
+            // Calculate metal generation rate from assigned workers
+            let metalRate = 0;
+            if (gameState.assignments.clearingDebris > 0 && gameState.ship.reactorStability > 20) {
+                metalRate = gameState.assignments.clearingDebris * 2;
+            }
+
+            // Update display
+            const energyRateEl = document.getElementById('energy-rate');
+            const foodRateEl = document.getElementById('food-rate');
+            const metalRateEl = document.getElementById('metal-rate');
+            
+            energyRateEl.textContent = energyRate > 0 ? ` (+${energyRate}/5sec)` : '';
+            
+            // Show food rate with proper +/- indication
+            if (netFoodRate > 0) {
+                foodRateEl.textContent = ` (+${netFoodRate}/5sec)`;
+            } else if (netFoodRate < 0) {
+                foodRateEl.textContent = ` (${netFoodRate}/5sec)`; // Already negative, no need for extra minus
+            } else {
+                foodRateEl.textContent = netFoodRate === 0 && (foodGeneration > 0 || foodConsumption > 0) ? ' (±0/5sec)' : '';
+            }
+            
+            metalRateEl.textContent = metalRate > 0 ? ` (+${metalRate}/5sec)` : '';
+        }
+
+        function updateWorkAssignments() {
+            // Only show assignments if there are colonists
+            if (gameState.colonists.awake > 0) {
+                // Update assignment displays
+                document.getElementById('debris-assigned').textContent = `${gameState.assignments.clearingDebris} assigned`;
+                document.getElementById('forage-assigned').textContent = `${gameState.assignments.foragingHydroponics} assigned`;
+                
+                // Update worker counts in status panel
+                const debrisWorkersEl = document.querySelector('#debris-workers span');
+                const forageWorkersEl = document.querySelector('#forage-workers span');
+                const idleCountEl = document.getElementById('idle-count');
+                
+                if (debrisWorkersEl) debrisWorkersEl.textContent = `${gameState.assignments.clearingDebris} workers`;
+                if (forageWorkersEl) forageWorkersEl.textContent = `${gameState.assignments.foragingHydroponics} workers`;
+                
+                // Fix idle worker calculation
+                const idleWorkers = getAvailableWorkers();
+                if (idleCountEl) idleCountEl.textContent = idleWorkers;
+            } else {
+                // Hide assignment text when no colonists
+                document.getElementById('debris-assigned').textContent = '';
+                document.getElementById('forage-assigned').textContent = '';
+            }
+            
+            // Update assignment button states
+            updateAssignmentButtons();
+        }
+
+        function updateAssignmentButtons() {
+            const availableWorkers = getAvailableWorkers();
+            const debrisAssigned = gameState.assignments.clearingDebris;
+            const forageAssigned = gameState.assignments.foragingHydroponics;
+            
+            // Debris assignment buttons
+            document.getElementById('debris-plus1').disabled = availableWorkers < 1;
+            document.getElementById('debris-plus5').disabled = availableWorkers < 5;
+            document.getElementById('debris-minus1').disabled = debrisAssigned < 1;
+            document.getElementById('debris-minus5').disabled = debrisAssigned < 5;
+            
+            // Show/hide assignment buttons based on availability
+            document.getElementById('debris-plus1').classList.toggle('hidden', availableWorkers < 1);
+            document.getElementById('debris-plus5').classList.toggle('hidden', availableWorkers < 5);
+            document.getElementById('debris-minus1').classList.toggle('hidden', debrisAssigned < 1);
+            document.getElementById('debris-minus5').classList.toggle('hidden', debrisAssigned < 5);
+            
+            // Forage assignment buttons
+            document.getElementById('forage-plus1').disabled = availableWorkers < 1;
+            document.getElementById('forage-plus5').disabled = availableWorkers < 5;
+            document.getElementById('forage-minus1').disabled = forageAssigned < 1;
+            document.getElementById('forage-minus5').disabled = forageAssigned < 5;
+            
+            // Show/hide assignment buttons based on availability
+            document.getElementById('forage-plus1').classList.toggle('hidden', availableWorkers < 1);
+            document.getElementById('forage-plus5').classList.toggle('hidden', availableWorkers < 5);
+            document.getElementById('forage-minus1').classList.toggle('hidden', forageAssigned < 1);
+            document.getElementById('forage-minus5').classList.toggle('hidden', forageAssigned < 5);
+        }
+
+        function updateButtonStates() {
+            // Re-enable buttons if reactor is stable
+            if (gameState.ship.reactorStability > 20) {
+                const buttons = ['forage-btn', 'oxygen-btn', 'awaken-btn', 'scan-btn', 'hull-btn', 'upgrade-reactor-btn', 'probe-btn', 'trade-btn', 'debris-btn', 'quarters-btn'];
+                buttons.forEach(btnId => {
+                    const btn = document.getElementById(btnId);
+                    if (btn && !btn.classList.contains('hidden')) {
+                        btn.disabled = false;
+                    }
+                });
+            }
+
+            // Specific button state checks based on resources and reactor stability
+            const maxColonists = (gameState.ship.crewQuarters * 8) + 1;
+            const awakenBtn = document.getElementById('awaken-btn');
+            if (awakenBtn) awakenBtn.disabled = gameState.resources.energy < 50 || gameState.ship.reactorStability < 20 || gameState.colonists.awake >= maxColonists;
+
+            const quartersBtn = document.getElementById('quarters-btn');
+            if (quartersBtn) quartersBtn.disabled = gameState.resources.metal < 40 || gameState.resources.energy < 20 || gameState.ship.reactorStability < 20;
+
+            const scanBtn = document.getElementById('scan-btn');
+            if (scanBtn) scanBtn.disabled = gameState.resources.energy < 25 || gameState.ship.reactorStability < 20;
+
+            const hullBtn = document.getElementById('hull-btn');
+            if (hullBtn) hullBtn.disabled = gameState.resources.metal < 30 || gameState.ship.reactorStability < 20;
+
+            const upgradeBtn = document.getElementById('upgrade-reactor-btn');
+            if (upgradeBtn) {
+                const maxReactorLevel = 3;
+                const canUpgrade = gameState.resources.metal >= 100 && gameState.ship.reactorLevel < maxReactorLevel;
+                upgradeBtn.disabled = !canUpgrade || gameState.ship.reactorStability < 20;
+                
+                // Hide button if at max level
+                if (gameState.ship.reactorLevel >= maxReactorLevel) {
+                    upgradeBtn.classList.add('hidden');
+                } else {
+                    upgradeBtn.classList.remove('hidden');
+                }
+            }
+
+            const probeBtn = document.getElementById('probe-btn');
+            if (probeBtn) probeBtn.disabled = gameState.resources.energy < 50 || gameState.resources.metal < 25 || gameState.ship.reactorStability < 20;
+
+            const tradeBtn = document.getElementById('trade-btn');
+            if (tradeBtn) tradeBtn.disabled = gameState.resources.energy < 20 || gameState.ship.reactorStability < 20;
+
+            // Survival system buttons
+            const forageBtn = document.getElementById('forage-btn');
+            if (forageBtn) forageBtn.disabled = gameState.resources.energy < 3 || gameState.actions.foragingHydroponics || gameState.ship.reactorStability < 20;
+
+            const oxygenBtn = document.getElementById('oxygen-btn');
+            if (oxygenBtn) oxygenBtn.disabled = gameState.resources.energy < 30 || gameState.resources.metal < 15 || gameState.actions.repairingOxygen || gameState.ship.reactorStability < 20;
+
+            const debrisBtn = document.getElementById('debris-btn');
+            if (debrisBtn) debrisBtn.disabled = gameState.resources.energy < 2 || gameState.actions.clearingDebris || gameState.ship.reactorStability < 20;
+
+            // Reactor charge always available (no energy cost)
+            const chargeBtn = document.getElementById('charge-btn');
+            if (chargeBtn) chargeBtn.disabled = gameState.actions.chargingReactor;
+        }
+
+        // Start the game when page loads
+        window.onload = function() {
+            try {
+                initGame();
+            } catch (error) {
+                console.error("Error on window load:", error);
+                alert("Failed to start game: " + error.message);
+            }
+        };
+
+        // Global error handler
+        window.onerror = function(message, source, lineno, colno, error) {
+            console.error("Global error:", message, "at", source, "line", lineno);
+            log("SYSTEM ERROR: " + message);
+            return false;
+        };
+    </script>
+</body>
+</html>
